@@ -72,3 +72,28 @@ curl -X POST http://127.0.0.1:8000/patients/ \
 ## Note
 
 `test.py` is not included in `main.py`, so its routes are inactive. To enable them, add `from test import router as test_router` and `app.include_router(test_router)` to `main.py`. The name `test` clashes with Python's standard library module, so you may prefer to rename the file.
+
+## Tests
+
+```bash
+pip install -r requirements-dev.txt
+pytest
+```
+
+Tests use a temporary SQLite file, so `patients.db` is never touched.
+
+## Deploy to Railway
+
+1. Push this repo to GitHub.
+2. On https://railway.com choose **New Project → Deploy from GitHub repo** and pick this repo.
+3. Railway reads `requirements.txt` and `railway.json` and starts `uvicorn main:app --host 0.0.0.0 --port $PORT`.
+4. In the service, open **Settings → Networking → Generate Domain** to get a public URL. Docs are at `<url>/docs`.
+
+### Keeping data between deploys
+
+Railway's container disk is wiped on every deploy. To keep the SQLite file:
+
+1. Add a **Volume** to the service, mounted at `/data`.
+2. Set the variable `DB_PATH=/data/patients.db`.
+
+For real production use, move to managed Postgres instead (see the notes on databases).
