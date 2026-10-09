@@ -36,4 +36,10 @@ def init_db():
         """
     )
     conn.commit()
+    count = conn.execute("SELECT COUNT(*) FROM patients").fetchone()[0]
     conn.close()
+    print(
+        f"[db] path={DB_PATH} parent_is_mount={os.path.ismount(DB_PATH.parent)} "
+        f"size={DB_PATH.stat().st_size}B patients={count}",
+        flush=True,
+    )
