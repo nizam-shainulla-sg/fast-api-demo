@@ -3,9 +3,12 @@ import sqlite3
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 
+from auth import require_api_key
 from database import get_db
 
-router = APIRouter(prefix="/patients", tags=["patients"])
+router = APIRouter(
+    prefix="/patients", tags=["patients"], dependencies=[Depends(require_api_key)]
+)
 
 
 class PatientIn(BaseModel):

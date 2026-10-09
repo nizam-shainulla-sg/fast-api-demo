@@ -13,9 +13,21 @@ PATIENT = {
 }
 
 
+API_KEY = "test-key"
+
+
 @pytest.fixture
 def client(tmp_path, monkeypatch):
     monkeypatch.setattr(database, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setenv("API_KEY", API_KEY)
+    with TestClient(app, headers={"X-API-Key": API_KEY}) as c:
+        yield c
+
+
+@pytest.fixture
+def anon(tmp_path, monkeypatch):
+    monkeypatch.setattr(database, "DB_PATH", tmp_path / "test.db")
+    monkeypatch.setenv("API_KEY", API_KEY)
     with TestClient(app) as c:
         yield c
 
@@ -93,3 +105,38 @@ def test_init_db_does_not_reseed(client):
     database.init_db()
     database.init_db()
     assert len(client.get("/patients/").json()) == 1
+
+
+@pytest.mark.parametrize(
+    "method,path,body",
+    [
+        ("get", "/patients/", None),
+        ("get", "/patients/1", None),
+        ("post", "/patients/", PATIENT),
+        ("delete", "/patients/1", None),
+    ],
+)
+def test_missing_key_rejected(anon, method, path, body):
+    r = anon.request(method, path, json=body)
+    assert r.status_code == 401
+
+
+def test_wrong_key_rejected(anon):
+    r = anon.get("/patients/", headers={"X-API-Key": "nope"})
+    assert r.status_code == 401
+
+
+def test_wrong_key_does_not_write(anon, client):
+    anon.post("/patients/", json=PATIENT, headers={"X-API-Key": "nope"})
+    assert len(client.get("/patients/").json()) == 1
+
+
+def test_root_and_docs_stay_public(anon):
+    assert anon.get("/").status_code == 200
+    assert anon.get("/docs").status_code == 200
+
+
+def test_fails_closed_when_key_not_configured(anon, monkeypatch):
+    monkeypatch.delenv("API_KEY")
+    r = anon.get("/patients/", headers={"X-API-Key": "anything"})
+    assert r.status_code == 503

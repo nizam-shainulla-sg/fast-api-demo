@@ -73,6 +73,32 @@ curl -X POST http://127.0.0.1:8000/patients/ \
 
 `test.py` is not included in `main.py`, so its routes are inactive. To enable them, add `from test import router as test_router` and `app.include_router(test_router)` to `main.py`. The name `test` clashes with Python's standard library module, so you may prefer to rename the file.
 
+## Authentication
+
+All `/patients` endpoints require an API key sent in the `X-API-Key` header. `/`, `/docs` and `/openapi.json` stay public.
+
+The server reads the expected key from the `API_KEY` environment variable. If it is not set, the protected endpoints return 503 instead of running unprotected.
+
+Generate a key:
+
+```bash
+python3 -c "import secrets; print(secrets.token_urlsafe(32))"
+```
+
+Run locally with it:
+
+```bash
+API_KEY=your-key uvicorn main:app --reload
+curl -H "X-API-Key: your-key" http://127.0.0.1:8000/patients/
+```
+
+In `/docs`, click **Authorize** and paste the key to try the endpoints.
+
+| Case | Status |
+|------|--------|
+| Missing or wrong key | 401 |
+| `API_KEY` not configured on the server | 503 |
+
 ## Tests
 
 ```bash
@@ -95,5 +121,9 @@ Railway's container disk is wiped on every deploy. To keep the SQLite file:
 
 1. Add a **Volume** to the service, mounted at `/data`.
 2. Set the variable `DB_PATH=/data/patients.db`.
+
+### Required variable
+
+Set `API_KEY` in the service's **Variables** tab before using `/patients`.
 
 For real production use, move to managed Postgres instead (see the notes on databases).
